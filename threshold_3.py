@@ -31,6 +31,7 @@ from threshold_3_dialog import Threshold3Dialog
 import os.path
 import math
 from worker import Worker
+from time import time
 
 class Threshold3:
     """QGIS Plugin Implementation."""
@@ -79,6 +80,8 @@ class Threshold3:
         self.renderer = None
         self.MIN = float("inf")
         self.MAX = float("-inf")
+        self.precision = 2
+        self.last_time = time() * 1000
 
         self.render_debounce_timer = QTimer()
         self.render_debounce_timer.timeout.connect(self.render)
@@ -244,13 +247,16 @@ class Threshold3:
 
         self.dlg.precision_spinbox.setMinimum(1)
         self.dlg.precision_spinbox.setMaximum(5)
-        self.dlg.precision_spinbox.setValue(2)
-        if connect: self.dlg.precision_spinbox.valueChanged.connect(lambda: self.on_changed(None, "precision"))
+        if connect: 
+            self.dlg.precision_spinbox.setValue(2)
+            self.dlg.precision_spinbox.valueChanged.connect(lambda: self.on_changed(None, "precision"))
 
-        self.dlg.doubleSpinBox_b.setSingleStep(0.01)
-        self.dlg.doubleSpinBox_1.setSingleStep(0.01)
-        self.dlg.doubleSpinBox_2.setSingleStep(0.01)
-        self.dlg.doubleSpinBox_3.setSingleStep(0.01)
+        increment = 1.0 / (10 ** self.precision)
+
+        self.dlg.doubleSpinBox_b.setSingleStep(increment)
+        self.dlg.doubleSpinBox_1.setSingleStep(increment)
+        self.dlg.doubleSpinBox_2.setSingleStep(increment)
+        self.dlg.doubleSpinBox_3.setSingleStep(increment)
 
         self.dlg.doubleSpinBox_b.setDecimals(5)
         self.dlg.doubleSpinBox_1.setDecimals(5)
@@ -290,15 +296,15 @@ class Threshold3:
             self.dlg.alpha_2_slider.valueChanged.connect(lambda: self.on_changed(None))
 
         self.dlg.base_slider.setMinimum(0)
-        self.dlg.base_slider.setMaximum(abs(self.MAX - self.MIN))
+        self.dlg.base_slider.setMaximum(abs(self.MAX - self.MIN) * (10 ** self.precision))
         self.dlg.base_slider.setValue(0)
 
-        self.dlg.threshold_0_slider.setMinimum(self.MIN)
-        self.dlg.threshold_0_slider.setMaximum(self.MAX)
-        self.dlg.threshold_1_slider.setMinimum(self.MIN)
-        self.dlg.threshold_1_slider.setMaximum(self.MAX)
-        self.dlg.threshold_2_slider.setMinimum(self.MIN)
-        self.dlg.threshold_2_slider.setMaximum(self.MAX)
+        self.dlg.threshold_0_slider.setMinimum(self.MIN * (10 ** self.precision))
+        self.dlg.threshold_0_slider.setMaximum(self.MAX * (10 ** self.precision))
+        self.dlg.threshold_1_slider.setMinimum(self.MIN * (10 ** self.precision))
+        self.dlg.threshold_1_slider.setMaximum(self.MAX * (10 ** self.precision))
+        self.dlg.threshold_2_slider.setMinimum(self.MIN * (10 ** self.precision))
+        self.dlg.threshold_2_slider.setMaximum(self.MAX * (10 ** self.precision))
 
         if connect:
             self.dlg.base_slider.valueChanged.connect(lambda: self.on_changed("base"))
@@ -326,11 +332,12 @@ class Threshold3:
         pass
     
     def render(self):
-        t_0 = self.dlg.threshold_0_slider.value()
-        t_1 = self.dlg.threshold_1_slider.value()
-        t_2 = self.dlg.threshold_2_slider.value()
+        t_0 = self.dlg.threshold_0_slider.value() / (10.0 ** self.precision) 
+        t_1 = self.dlg.threshold_1_slider.value() / (10.0 ** self.precision)
+        t_2 = self.dlg.threshold_2_slider.value() / (10.0 ** self.precision)
+        base = self.dlg.base_slider.value() / (10.0 ** self.precision)
         lst = [
-            QgsColorRampShader.ColorRampItem(t_0 - self.dlg.base_slider.value(), self.CLEAR),
+            QgsColorRampShader.ColorRampItem(t_0 - base, self.CLEAR),
             QgsColorRampShader.ColorRampItem(t_0, self.t_0_COLOR),
             QgsColorRampShader.ColorRampItem(t_1, self.t_1_COLOR),
             QgsColorRampShader.ColorRampItem(t_2, self.t_2_COLOR),
@@ -355,10 +362,16 @@ class Threshold3:
         self.render()
 
     def on_changed(self, which, source = ""):
+        if time() * 1000 - self.last_time < 25:
+            return
+        else:
+            self.last_time = time() * 1000
+
         base = self.dlg.doubleSpinBox_b.value()
         t_0 = self.dlg.doubleSpinBox_1.value()  
         t_1 = self.dlg.doubleSpinBox_2.value()
         t_2 = self.dlg.doubleSpinBox_3.value()
+        coef = 10 ** self.precision
         if source == "box":
             base = self.dlg.doubleSpinBox_b.value()
             t_0 = self.dlg.doubleSpinBox_1.value()  
@@ -366,20 +379,17 @@ class Threshold3:
             t_2 = self.dlg.doubleSpinBox_3.value()
         elif source == "precision":
             prec = self.dlg.precision_spinbox.value()
-            figs = 1.0 / (10.0 ** prec)
-            # self.dlg.doubleSpinBox_b.setDecimals(prec)
-            # self.dlg.doubleSpinBox_1.setDecimals(prec)
-            # self.dlg.doubleSpinBox_2.setDecimals(prec)
-            # self.dlg.doubleSpinBox_3.setDecimals(prec)
-            self.dlg.doubleSpinBox_b.setSingleStep(figs)
-            self.dlg.doubleSpinBox_1.setSingleStep(figs)
-            self.dlg.doubleSpinBox_2.setSingleStep(figs)
-            self.dlg.doubleSpinBox_3.setSingleStep(figs) 
+            self.precision = prec
+            # self.dlg.doubleSpinBox_b.setSingleStep(figs)
+            # self.dlg.doubleSpinBox_1.setSingleStep(figs)
+            # self.dlg.doubleSpinBox_2.setSingleStep(figs)
+            # self.dlg.doubleSpinBox_3.setSingleStep(figs) 
+            self.set_values()
         else:
-            base = self.dlg.base_slider.value()
-            t_0 = self.dlg.threshold_0_slider.value()
-            t_1 = self.dlg.threshold_1_slider.value()
-            t_2 = self.dlg.threshold_2_slider.value()
+            base = self.dlg.base_slider.value() / float(coef)
+            t_0 = self.dlg.threshold_0_slider.value() / float(coef)
+            t_1 = self.dlg.threshold_1_slider.value() / float(coef)
+            t_2 = self.dlg.threshold_2_slider.value() / float(coef)
 
         alpha_0 = self.dlg.alpha_0_slider.value()
         alpha_1 = self.dlg.alpha_1_slider.value()
@@ -422,18 +432,23 @@ class Threshold3:
                 self.dlg.threshold_1_slider.setValue(t_1)
                 self.dlg.doubleSpinBox_2.setValue(t_1)
 
+            if t_0 > t_2:
+                t_0 = t_2
+                self.dlg.threshold_1_slider.setValue(t_0)
+                self.dlg.doubleSpinBox_2.setValue(t_0)
+
         # if base > t_0:
         #     base = t_0
         #     self.dlg.base_slider.setValue(base)
         #     self.dlg.doubleSpinBox_b.setValue(base)
-        self.dlg.base_slider.setValue(base)
+        self.dlg.base_slider.setValue(base * coef)
         # self.dlg.base_value.setText(str(base))
         # self.dlg.threshold_0_value.setText(str(t_0))
         # self.dlg.threshold_1_value.setText(str(t_1))
         # self.dlg.threshold_2_value.setText(str(t_2))
-        self.dlg.threshold_0_slider.setValue(t_0)
-        self.dlg.threshold_1_slider.setValue(t_1)
-        self.dlg.threshold_2_slider.setValue(t_2)
+        self.dlg.threshold_0_slider.setValue(t_0 * coef)
+        self.dlg.threshold_1_slider.setValue(t_1 * coef)
+        self.dlg.threshold_2_slider.setValue(t_2 * coef)
         self.dlg.doubleSpinBox_1.setValue(t_0)        
         self.dlg.doubleSpinBox_2.setValue(t_1)
         self.dlg.doubleSpinBox_3.setValue(t_2)       
