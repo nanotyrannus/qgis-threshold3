@@ -48,7 +48,7 @@
     <set>Qt::AlignCenter</set>
    </property>
   </widget>
-  <widget class="QWidget" name="">
+  <widget class="QWidget" name="layoutWidget">
    <property name="geometry">
     <rect>
      <x>20</x>
@@ -462,45 +462,20 @@
     </item>
     <item>
      <layout class="QGridLayout" name="gridLayout_4">
+      <item row="0" column="2">
+       <widget class="QDoubleSpinBox" name="doubleSpinBox_b"/>
+      </item>
       <item row="0" column="0">
        <widget class="QLabel" name="base_label">
         <property name="text">
-         <string>T_base</string>
+         <string>radius</string>
         </property>
        </widget>
       </item>
       <item row="0" column="1">
        <widget class="QSlider" name="base_slider">
-        <property name="minimumSize">
-         <size>
-          <width>321</width>
-          <height>20</height>
-         </size>
-        </property>
-        <property name="maximumSize">
-         <size>
-          <width>321</width>
-          <height>20</height>
-         </size>
-        </property>
         <property name="orientation">
          <enum>Qt::Horizontal</enum>
-        </property>
-       </widget>
-      </item>
-      <item row="0" column="2">
-       <widget class="QDoubleSpinBox" name="doubleSpinBox_b"/>
-      </item>
-      <item row="0" column="3">
-       <widget class="QLabel" name="base_value">
-        <property name="text">
-         <string>0</string>
-        </property>
-        <property name="textFormat">
-         <enum>Qt::PlainText</enum>
-        </property>
-        <property name="alignment">
-         <set>Qt::AlignCenter</set>
         </property>
        </widget>
       </item>

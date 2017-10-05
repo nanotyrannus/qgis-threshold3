@@ -204,12 +204,12 @@ class Threshold3:
         """Run method that performs all the real work"""
         # show the dialog
         self.dlg.show()
-        self.toggleWidgets(False)
+        self.toggle_widgets(False)
 
         self.layer = self.iface.activeLayer()
         if self.layer is None:
             self.dlg.header.setText("No layer selected.")
-            self.dlg.header.setStyleSheet("background-color: #000000; color: #FF0000;")
+            self.dlg.header.setStyleSheet("color: #000000;")
         else:
             if isinstance(self.layer, QgsRasterLayer) is False:
                 raise TypeError("Expected QgsRasterLayer, got {}".format(type(self.layer)))
@@ -218,11 +218,13 @@ class Threshold3:
                 self.fcn = QgsColorRampShader()
                 self.fcn.setColorRampType(QgsColorRampShader.INTERPOLATED)
                 self.layer.hasFilter = True
+            else:
+                self.toggle_widgets(True)
         if self.MAX == float("-inf"):
             self.startWorker(self.iface, self.layer)
         # Run the dialog event loop
 
-        self.set_values()
+        self.set_values(True)
 
         result = self.dlg.exec_()
 
@@ -238,12 +240,12 @@ class Threshold3:
         else:
             print("CANCEL was pressed.")
 
-    def set_values(self):        
+    def set_values(self, connect = False):        
 
         self.dlg.precision_spinbox.setMinimum(1)
-        self.dlg.precision_spinbox.setMaximum(10)
+        self.dlg.precision_spinbox.setMaximum(5)
         self.dlg.precision_spinbox.setValue(2)
-        self.dlg.precision_spinbox.valueChanged.connect(lambda: self.on_changed(None, "precision"))
+        if connect: self.dlg.precision_spinbox.valueChanged.connect(lambda: self.on_changed(None, "precision"))
 
         self.dlg.doubleSpinBox_b.setSingleStep(0.01)
         self.dlg.doubleSpinBox_1.setSingleStep(0.01)
@@ -255,20 +257,21 @@ class Threshold3:
         self.dlg.doubleSpinBox_2.setDecimals(5)
         self.dlg.doubleSpinBox_3.setDecimals(5)
 
-        self.dlg.doubleSpinBox_b.setMinimum(self.MIN)
+        self.dlg.doubleSpinBox_b.setMinimum(0)
         self.dlg.doubleSpinBox_1.setMinimum(self.MIN)
         self.dlg.doubleSpinBox_2.setMinimum(self.MIN)
         self.dlg.doubleSpinBox_3.setMinimum(self.MIN)
 
-        self.dlg.doubleSpinBox_b.setMaximum(self.MAX)
+        self.dlg.doubleSpinBox_b.setMaximum(abs(self.MAX - self.MIN))
         self.dlg.doubleSpinBox_1.setMaximum(self.MAX)
         self.dlg.doubleSpinBox_2.setMaximum(self.MAX)
         self.dlg.doubleSpinBox_3.setMaximum(self.MAX)
 
-        self.dlg.doubleSpinBox_b.valueChanged.connect(lambda: self.on_changed(None, "box"))
-        self.dlg.doubleSpinBox_1.valueChanged.connect(lambda: self.on_changed(0, "box"))
-        self.dlg.doubleSpinBox_2.valueChanged.connect(lambda: self.on_changed(1, "box"))
-        self.dlg.doubleSpinBox_3.valueChanged.connect(lambda: self.on_changed(2, "box"))
+        if connect:
+            self.dlg.doubleSpinBox_b.valueChanged.connect(lambda: self.on_changed(None, "box"))
+            self.dlg.doubleSpinBox_1.valueChanged.connect(lambda: self.on_changed(0, "box"))
+            self.dlg.doubleSpinBox_2.valueChanged.connect(lambda: self.on_changed(1, "box"))
+            self.dlg.doubleSpinBox_3.valueChanged.connect(lambda: self.on_changed(2, "box"))
 
         self.dlg.alpha_0_slider.setMinimum(0)
         self.dlg.alpha_0_slider.setMaximum(255)
@@ -281,13 +284,14 @@ class Threshold3:
         self.dlg.alpha_1_slider.setValue(255)
         self.dlg.alpha_2_slider.setValue(255)
 
-        self.dlg.alpha_0_slider.valueChanged.connect(lambda: self.on_changed(None))
-        self.dlg.alpha_1_slider.valueChanged.connect(lambda: self.on_changed(None))
-        self.dlg.alpha_2_slider.valueChanged.connect(lambda: self.on_changed(None))
+        if connect:
+            self.dlg.alpha_0_slider.valueChanged.connect(lambda: self.on_changed(None))
+            self.dlg.alpha_1_slider.valueChanged.connect(lambda: self.on_changed(None))
+            self.dlg.alpha_2_slider.valueChanged.connect(lambda: self.on_changed(None))
 
-        self.dlg.base_slider.setMinimum(self.MIN)
-        self.dlg.base_slider.setMaximum(self.MAX)
-        self.dlg.base_slider.setValue(self.MIN)
+        self.dlg.base_slider.setMinimum(0)
+        self.dlg.base_slider.setMaximum(abs(self.MAX - self.MIN))
+        self.dlg.base_slider.setValue(0)
 
         self.dlg.threshold_0_slider.setMinimum(self.MIN)
         self.dlg.threshold_0_slider.setMaximum(self.MAX)
@@ -296,10 +300,11 @@ class Threshold3:
         self.dlg.threshold_2_slider.setMinimum(self.MIN)
         self.dlg.threshold_2_slider.setMaximum(self.MAX)
 
-        self.dlg.base_slider.valueChanged.connect(lambda: self.on_changed("base"))
-        self.dlg.threshold_0_slider.valueChanged.connect(lambda: self.on_changed(0))
-        self.dlg.threshold_1_slider.valueChanged.connect(lambda: self.on_changed(1))
-        self.dlg.threshold_2_slider.valueChanged.connect(lambda: self.on_changed(2))
+        if connect:
+            self.dlg.base_slider.valueChanged.connect(lambda: self.on_changed("base"))
+            self.dlg.threshold_0_slider.valueChanged.connect(lambda: self.on_changed(0))
+            self.dlg.threshold_1_slider.valueChanged.connect(lambda: self.on_changed(1))
+            self.dlg.threshold_2_slider.valueChanged.connect(lambda: self.on_changed(2))
 
         # Turn it on and off again... I don't know why but
         # connecting and disconnecting these listeners fixes
@@ -321,11 +326,14 @@ class Threshold3:
         pass
     
     def render(self):
+        t_0 = self.dlg.threshold_0_slider.value()
+        t_1 = self.dlg.threshold_1_slider.value()
+        t_2 = self.dlg.threshold_2_slider.value()
         lst = [
-            QgsColorRampShader.ColorRampItem(self.dlg.base_slider.value(), self.CLEAR),
-            QgsColorRampShader.ColorRampItem(self.dlg.threshold_0_slider.value(), self.t_0_COLOR),
-            QgsColorRampShader.ColorRampItem(self.dlg.threshold_1_slider.value(), self.t_1_COLOR),
-            QgsColorRampShader.ColorRampItem(self.dlg.threshold_2_slider.value(), self.t_2_COLOR),
+            QgsColorRampShader.ColorRampItem(t_0 - self.dlg.base_slider.value(), self.CLEAR),
+            QgsColorRampShader.ColorRampItem(t_0, self.t_0_COLOR),
+            QgsColorRampShader.ColorRampItem(t_1, self.t_1_COLOR),
+            QgsColorRampShader.ColorRampItem(t_2, self.t_2_COLOR),
             ]
         self.fcn = QgsColorRampShader()
         self.fcn.setColorRampType(QgsColorRampShader.INTERPOLATED) 
@@ -414,11 +422,11 @@ class Threshold3:
                 self.dlg.threshold_1_slider.setValue(t_1)
                 self.dlg.doubleSpinBox_2.setValue(t_1)
 
-        if base > t_0:
-            base = t_0
-            self.dlg.base_slider.setValue(base)
-            self.dlg.doubleSpinBox_b.setValue(base)
-
+        # if base > t_0:
+        #     base = t_0
+        #     self.dlg.base_slider.setValue(base)
+        #     self.dlg.doubleSpinBox_b.setValue(base)
+        self.dlg.base_slider.setValue(base)
         # self.dlg.base_value.setText(str(base))
         # self.dlg.threshold_0_value.setText(str(t_0))
         # self.dlg.threshold_1_value.setText(str(t_1))
@@ -440,10 +448,25 @@ class Threshold3:
         else:
             self.render_debounce_timer.start(75)
 
-    def toggleWidgets(self, value):
-        pass
+    def toggle_widgets(self, value):
+        self.dlg.doubleSpinBox_1.setEnabled(value)
+        self.dlg.doubleSpinBox_2.setEnabled(value)
+        self.dlg.doubleSpinBox_3.setEnabled(value)
+        self.dlg.doubleSpinBox_b.setEnabled(value)
+        self.dlg.threshold_0_slider.setEnabled(value)
+        self.dlg.threshold_1_slider.setEnabled(value)
+        self.dlg.threshold_2_slider.setEnabled(value)
+        self.dlg.threshold_0_button.setEnabled(value)
+        self.dlg.threshold_1_button.setEnabled(value)
+        self.dlg.threshold_2_button.setEnabled(value)
+        self.dlg.alpha_0_slider.setEnabled(value)
+        self.dlg.alpha_1_slider.setEnabled(value)
+        self.dlg.alpha_2_slider.setEnabled(value)
+        self.dlg.precision_spinbox.setEnabled(value)
+
 
     def startWorker(self, iface, layer):
+        self.dlg.header.setText("Calculating...")
         worker = Worker(iface, layer)
         messageBar = self.iface.messageBar().createMessage('Calculating range...', )
         progressBar = QProgressBar()
@@ -469,6 +492,7 @@ class Threshold3:
         pass
 
     def workerFinished(self, ret):
+        self.dlg.header.setText("")
         # clean up the worker and thread
         self.worker.deleteLater()
         self.thread.quit()
@@ -482,7 +506,7 @@ class Threshold3:
             self.MIN = _min
             self.MAX = _max
             self.set_values()
-            self.toggleWidgets(True)
+            self.toggle_widgets(True)
 
             # self.iface.messageBar().pushMessage('min: {}, max: {}'.format(_min, _max))
         else:
