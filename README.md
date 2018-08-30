@@ -1,3 +1,3 @@
-# Threshold3 QGIS Plugin
+# Threshold QGIS Plugin
 
-Readme text goes here
+Threshold plugin for QGIS version <=2.99.
